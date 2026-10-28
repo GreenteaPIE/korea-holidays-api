@@ -19,6 +19,10 @@
   "include": [
     "src",
     "test",
-    "scripts/verify-lib.ts"
+    "scripts/verify-lib.ts",
+    "scripts/python-data.ts"
+  ],
+  "exclude": [
+    "test/python-data.test.ts"
   ]
 }

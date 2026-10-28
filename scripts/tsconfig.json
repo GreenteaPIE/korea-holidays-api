@@ -6,6 +6,7 @@
     ]
   },
   "include": [
-    "."
+    ".",
+    "../test/python-data.test.ts"
   ]
 }

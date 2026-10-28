@@ -5,20 +5,23 @@
 [![bundle size](https://img.shields.io/bundlephobia/minzip/korea-holidays)](https://bundlephobia.com/package/korea-holidays)
 [![Test & Deploy](https://github.com/GreenteaPIE/korea-holidays-api/actions/workflows/deploy.yml/badge.svg)](https://github.com/GreenteaPIE/korea-holidays-api/actions/workflows/deploy.yml)
 [![Verify Holiday Data](https://github.com/GreenteaPIE/korea-holidays-api/actions/workflows/verify-data.yml/badge.svg)](https://github.com/GreenteaPIE/korea-holidays-api/actions/workflows/verify-data.yml)
+[![PyPI version](https://img.shields.io/pypi/v/korea-holidays?color=3775a9&logo=pypi&logoColor=white)](https://pypi.org/project/korea-holidays/)
 [![license](https://img.shields.io/npm/l/korea-holidays)](LICENSE)
 
 대한민국 공휴일·영업일 Open API & 라이브러리 — 대체공휴일·임시공휴일·연차 추천·캘린더 구독까지, API 키 없이 바로 사용
 
 **🔗 API 주소:** https://korea-holidays-api.greenteapie2023.workers.dev  
 **📖 문서(Swagger):** https://korea-holidays-api.greenteapie2023.workers.dev/docs  
-**📦 npm:** [`korea-holidays`](https://www.npmjs.com/package/korea-holidays)
+**🏖️ 연차 계산기:** https://korea-holidays-api.greenteapie2023.workers.dev/vacation  
+**📦 npm:** [`korea-holidays`](https://www.npmjs.com/package/korea-holidays) · **🐍 PyPI:** [`korea-holidays`](https://pypi.org/project/korea-holidays/)
 
 - **API 키 없음** · 회원가입 없이 바로 호출
 - **대체공휴일·임시공휴일·선거일 포함** · 2026년부터 공휴일이 된 노동절·제헌절 반영
 - **영업일 계산** · "영업일 기준 N일 뒤", "기간 내 영업일 수", 토요일 영업·회사 휴일 옵션
 - **연휴·연차 추천** · "연차 2일로 최장 9일 휴가"
 - **캘린더 구독** · 구글·애플 캘린더에 URL 하나로 추가
-- **npm 패키지** · 서버 없이 코드에서 바로 계산 (의존성 0개)
+- **npm·PyPI 패키지** · 서버 없이 코드에서 바로 계산 (의존성 0개)
+- **구글 시트 함수** · `=KR_ADDBUSINESSDAYS(A2, 3)` 처럼 코드 없이
 - **CORS 허용** · 브라우저에서 바로 `fetch` 가능
 
 ## 지원 연도
@@ -147,6 +150,54 @@ vacationTips(2027, 2)[0] // { start: '2027-09-11', end: '2027-09-19', days: 9, .
 
 날짜는 `'YYYY-MM-DD'` 문자열 또는 `Date` 를 받으며, `Date` 는 **한국 시간 기준 날짜**로 해석합니다. 지원 연도 밖이면 `OutOfRangeError`, 형식이 틀리면 `InvalidDateError` 를 던집니다.
 
+## 🐍 Python 패키지
+
+```bash
+pip install korea-holidays
+```
+
+```python
+import korea_holidays as kh
+
+kh.is_holiday("2026-07-17")             # True (제헌절)
+kh.add_business_days("2026-09-23", 3)   # date(2026, 9, 30)
+kh.vacation_tips(2027, leave_days=2)[0] # 2027-09-11 ~ 09-19, 9일
+```
+
+함수 목록과 옵션은 [`python/README.md`](python/README.md) 를 참고하세요. npm 패키지와 같은 데이터·같은 계산 결과를 냅니다.
+
+## 📊 구글 시트 함수
+
+구글 시트 **확장 프로그램 → Apps Script** 에 [`integrations/google-sheets/Code.gs`](integrations/google-sheets/Code.gs) 를 붙여넣으면 바로 쓸 수 있습니다.
+
+```
+=KR_ISHOLIDAY(A2)                         → TRUE / FALSE
+=KR_ADDBUSINESSDAYS("2026-09-23", 3)      → 2026-09-30
+=KR_BUSINESSDAYS("2026-10-01", "2026-10-31") → 20
+=KR_HOLIDAYS(2026)                        → 공휴일 표
+```
+
+자세한 설치 방법은 [`integrations/google-sheets/README.md`](integrations/google-sheets/README.md) 에 있습니다.
+
+## 💬 슬랙 알림 예시
+
+GitHub Actions 스케줄로 "내일은 공휴일" 알림을 보낼 수 있습니다 (`SLACK_WEBHOOK_URL` 시크릿 필요).
+
+```yaml
+on:
+  schedule:
+    - cron: '0 9 * * *' # 매일 18:00 KST
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          tomorrow=$(TZ=Asia/Seoul date -d tomorrow +%F)
+          name=$(curl -s "https://korea-holidays-api.greenteapie2023.workers.dev/holidays/check?date=$tomorrow" | jq -r '.holidays[0].name // empty')
+          [ -n "$name" ] && curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"📅 내일($tomorrow)은 $name 입니다\"}" "${{ secrets.SLACK_WEBHOOK_URL }}" || true
+```
+
 ## 에러 응답
 
 ```json
@@ -168,7 +219,11 @@ npm run dev        # http://localhost:8787
 npm test
 npm run typecheck
 npm run build      # npm 패키지 빌드 (dist/)
+npm run export:python  # src/data 를 고친 뒤 Python 패키지 데이터 갱신
+node scripts/og/generate.cjs  # 공유 미리보기 이미지(public/og*.png) 다시 만들기
 ```
+
+공휴일 데이터의 원본은 [`src/data/holidays.ts`](src/data/holidays.ts) 하나입니다. Python 패키지 데이터는 여기서 생성하며, 둘이 다르면 테스트가 실패합니다.
 
 ## 자동화 (GitHub Actions)
 
@@ -176,10 +231,12 @@ npm run build      # npm 패키지 빌드 (dist/)
 |---|---|---|---|
 | [Test & Deploy](.github/workflows/deploy.yml) | `main` 푸시, PR | 테스트 후 Cloudflare Workers 배포 (PR 은 테스트만) | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
 | [Verify Holiday Data](.github/workflows/verify-data.yml) | 매주 월요일 09:17 (KST) | 공공데이터포털 특일정보와 비교해 다르면 이슈 생성 | `DATA_GO_KR_SERVICE_KEY` |
-| [Publish to npm](.github/workflows/publish-npm.yml) | GitHub Release 발행 | npm 에 `korea-holidays` 배포 | `NPM_TOKEN` |
+| [Python](.github/workflows/python.yml) | `python/`·데이터 변경 | Python 3.9·3.13 테스트 | - |
+| [Publish to npm](.github/workflows/publish-npm.yml) | GitHub Release 발행 | npm 에 `korea-holidays` 배포 | 없음 (Trusted Publishing) |
+| [Publish to PyPI](.github/workflows/publish-pypi.yml) | GitHub Release 발행 | PyPI 에 `korea-holidays` 배포 | 없음 (Trusted Publishing) |
 
 - `DATA_GO_KR_SERVICE_KEY`: [공공데이터포털 한국천문연구원 특일 정보](https://www.data.go.kr/data/15012690/openapi.do) 활용신청 후 발급되는 일반 인증키(Decoding)
-- npm 배포: `package.json` 의 `version` 을 올리고, 같은 이름의 태그(예: `v0.2.0`)로 Release 를 발행합니다.
+- 배포: `package.json`, `python/pyproject.toml`, `python/src/korea_holidays/__init__.py` 의 버전을 함께 올리고(다르면 테스트 실패), 같은 이름의 태그(예: `v0.3.0`)로 Release 를 발행하면 npm 과 PyPI 에 함께 배포됩니다.
 
 ## 운영
 

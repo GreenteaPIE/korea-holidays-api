@@ -46,7 +46,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
     "verify-data": "node scripts/verify-holidays.ts",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "export:python": "node scripts/export-python-data.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261027.1",
@@ -54,6 +55,7 @@
     "@hono/zod-openapi": "^1.6.3",
     "@types/node": "^22.20.5",
     "hono": "^4.13.14",
+    "pretendard": "^1.3.9",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5",
     "wrangler": "^4.154.0",

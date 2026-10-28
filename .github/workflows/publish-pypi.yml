@@ -1,0 +1,44 @@
+name: Publish to PyPI
+
+# GitHub 에서 Release 를 발행하면 PyPI 에 korea-holidays 패키지를 배포한다 (npm 과 같은 Release 로 함께 배포).
+# 인증은 PyPI Trusted Publishing(OIDC)을 쓰므로 토큰이 필요 없다. PyPI 에서 이 워크플로를 Trusted Publisher 로 등록해야 한다.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Check tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          version="v$(python -c "import tomllib; print(tomllib.load(open('python/pyproject.toml','rb'))['project']['version'])")"
+          if [ "$version" != "${{ github.event.release.tag_name }}" ]; then
+            echo "::error::Release 태그(${{ github.event.release.tag_name }})와 pyproject.toml 버전($version)이 다릅니다"
+            exit 1
+          fi
+      - run: pip install pytest build ./python && pytest python/tests
+      - run: python -m build python
+      - uses: actions/upload-artifact@v6
+        with:
+          name: dist
+          path: python/dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

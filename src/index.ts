@@ -18,7 +18,8 @@ import {
   vacationTips,
   type CalendarOptions,
 } from './lib/index.ts'
-import { LANDING_HTML } from './landing.ts'
+import { LANDING_HTML } from './pages/landing.ts'
+import { vacationHtml } from './pages/vacation.ts'
 
 type Bindings = {
   /** wrangler.toml 의 [[ratelimits]]. 로컬 테스트에서는 없다. */
@@ -451,6 +452,19 @@ app.doc('/openapi.json', {
   },
 })
 app.get('/docs', swaggerUI({ url: '/openapi.json' }))
+
+app.get('/vacation', (c) => {
+  const today = todayKst()
+  const thisYear = Number(today.slice(0, 4))
+  const years = SUPPORTED_YEARS.filter((y) => y >= thisYear)
+  // 10월부터는 다음 해 연차 계획을 세우는 시기라 다음 해를 먼저 보여준다
+  const preferred = Number(today.slice(5, 7)) >= 10 ? thisYear + 1 : thisYear
+  const defaultYear = years.includes(preferred) ? preferred : (years[0] ?? SUPPORTED_YEARS.at(-1)!)
+  c.header('Cache-Control', 'public, max-age=3600')
+  return c.html(
+    vacationHtml({ years: years.length ? years : [defaultYear], defaultYear, provisional: [...PROVISIONAL_YEARS] }),
+  )
+})
 
 app.get('/', (c) => {
   if (c.req.header('Accept')?.includes('text/html')) return c.html(LANDING_HTML)

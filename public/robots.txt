@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://korea-holidays-api.greenteapie2023.workers.dev/sitemap.xml

@@ -206,6 +206,22 @@ describe('문서와 기타', () => {
     expect(body.endpoints).toContain('/vacation-tips')
   })
 
+  it('/vacation 연차 계산기 페이지', async () => {
+    const res = await app.request('/vacation')
+    expect(res.status).toBe(200)
+    const html = await res.text()
+    expect(html).toContain('연차 꿀조합 계산기')
+    expect(html).toContain('og:image')
+    expect(html).toContain('/og-vacation.png')
+  })
+
+  it('소개 페이지에 SEO 태그가 있다', async () => {
+    const html = await (await app.request('/', { headers: { Accept: 'text/html' } })).text()
+    expect(html).toContain('<link rel="canonical" href="https://korea-holidays-api.greenteapie2023.workers.dev/">')
+    expect(html).toContain('application/ld+json')
+    expect(html).toContain('href="/vacation"')
+  })
+
   it('rate limit 을 넘으면 429', async () => {
     const env = { RATE_LIMITER: { limit: async () => ({ success: false }) } }
     const res = await app.request('/years', {}, env)

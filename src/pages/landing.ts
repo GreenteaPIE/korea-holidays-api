@@ -1,41 +1,34 @@
 // `/` 에 브라우저로 접속했을 때 보여주는 소개 페이지. 외부 리소스 없이 이 파일 하나로 동작한다.
+import { BASE_CSS, GITHUB_URL, NPM_URL, SITE_URL, head } from './layout.ts'
 
 export const LANDING_HTML = /* html */ `<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Korea Holidays API</title>
-<meta name="description" content="대한민국 공휴일·영업일 Open API — 대체공휴일·임시공휴일 지원, API 키 없이 JSON으로 바로 사용">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+${head({
+  title: 'Korea Holidays API — 대한민국 공휴일·영업일 Open API',
+  description:
+    '대체공휴일·임시공휴일까지 반영한 대한민국 공휴일 API. 영업일 계산, 연차 추천, 캘린더 구독을 API 키 없이 무료로 사용하세요. npm 패키지도 제공합니다.',
+  path: '/',
+  image: '/og.png',
+  keywords: '공휴일 API, 대한민국 공휴일, 대체공휴일, 임시공휴일, 영업일 계산, 공휴일 JSON, holiday api korea, 연차 계산',
+  jsonLd: {
+    '@context': 'https://schema.org',
+    '@type': 'WebAPI',
+    name: 'Korea Holidays API',
+    description: '대한민국 공휴일·영업일 Open API',
+    url: SITE_URL,
+    documentation: SITE_URL + '/docs',
+    provider: { '@type': 'Person', name: 'GreenteaPIE', url: GITHUB_URL },
+    isAccessibleForFree: true,
+    inLanguage: 'ko',
+  },
+})}
 <style>
-  :root {
-    --bg: #f7f7f5; --surface: #ffffff; --text: #1d1d1f; --muted: #6e6e73; --border: #e3e3e0;
-    --accent: #cd2e3a; --accent-soft: #fbeaeb; --blue: #0047a0; --code-bg: #f1f1ee;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #111113; --surface: #1c1c1f; --text: #f2f2f2; --muted: #a1a1a6; --border: #2e2e33;
-      --accent: #ff5c66; --accent-soft: #3a1c1f; --blue: #6ea8ff; --code-bg: #232327; }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.6;
-    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
-  main { max-width: 860px; margin: 0 auto; padding: 48px 16px 80px; }
-  h1 { font-size: clamp(28px, 6vw, 40px); margin: 0 0 8px; letter-spacing: -0.02em; }
-  h2 { font-size: 20px; margin: 48px 0 12px; }
-  p { margin: 0 0 12px; }
-  .lead { color: var(--muted); font-size: 17px; }
+${BASE_CSS}
   .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 24px; }
   .badge { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
   .base { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13.5px; }
   .base code { background: var(--code-bg); padding: 8px 12px; border-radius: 8px; overflow-wrap: anywhere; flex: 1; min-width: 0; }
-  button, .btn { font: inherit; font-size: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
-    padding: 7px 14px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; }
-  button:hover, .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primary:hover { opacity: 0.9; color: #fff; }
   .today { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
   .today .label { color: var(--muted); font-size: 13px; }
   .today .value { font-size: 22px; font-weight: 700; }
@@ -49,8 +42,11 @@ export const LANDING_HTML = /* html */ `<!doctype html>
   pre.out { display: none; background: var(--code-bg); border-radius: 8px; padding: 12px; margin: 10px 0 0; overflow-x: auto; max-height: 320px; }
   pre.out.show { display: block; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-  footer { margin-top: 56px; color: var(--muted); font-size: 14px; }
-  footer a, .links a { color: var(--blue); }
+  .cta { display: flex; gap: 16px; align-items: center; justify-content: space-between; margin-top: 16px;
+    background: linear-gradient(135deg, var(--accent-soft), var(--blue-soft)); border: 0; }
+  .cta strong { display: block; font-size: 18px; }
+  .cta span { color: var(--muted); font-size: 14px; }
+  .cta .btn { flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -67,6 +63,11 @@ export const LANDING_HTML = /* html */ `<!doctype html>
     <button type="button" data-copy="base">복사</button>
     <a class="btn primary" href="/docs">API 문서</a>
   </div>
+
+  <a class="card cta" href="/vacation">
+    <div><strong>🏖️ 연차 꿀조합 계산기</strong><span>연차 며칠로 최장 며칠 쉴 수 있을까? 대체공휴일까지 반영해 계산해 드려요</span></div>
+    <span class="btn primary">계산하기</span>
+  </a>
 
   <h2>오늘</h2>
   <div class="today">
@@ -88,8 +89,9 @@ export const LANDING_HTML = /* html */ `<!doctype html>
   </div>
 
   <footer class="links">
-    <a href="https://github.com/GreenteaPIE/korea-holidays-api">GitHub</a> ·
-    <a href="https://www.npmjs.com/package/korea-holidays">npm</a> ·
+    <a href="${GITHUB_URL}">GitHub</a> ·
+    <a href="${NPM_URL}">npm</a> ·
+    <a href="/vacation">연차 계산기</a> ·
     <a href="/openapi.json">OpenAPI</a>
     <p>관공서 공휴일 기준입니다. 민간 기업의 휴무 여부는 회사 규정에 따라 다를 수 있습니다.</p>
   </footer>

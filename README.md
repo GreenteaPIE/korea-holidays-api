@@ -88,6 +88,18 @@ npm run typecheck
 
 ## 배포 (Cloudflare Workers)
 
+`main` 브랜치에 푸시하면 GitHub Actions 가 테스트 후 자동 배포합니다 ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
+PR 에서는 테스트만 실행합니다.
+
+필요한 저장소 Secrets (Settings → Secrets and variables → Actions):
+
+| 이름 | 값 |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API 토큰 ("Edit Cloudflare Workers" 템플릿) |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |
+
+로컬에서 직접 배포하려면:
+
 ```bash
 npx wrangler login
 npm run deploy

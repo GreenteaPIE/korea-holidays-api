@@ -34,7 +34,7 @@ describe('holidaysOn / isBusinessDay', () => {
   })
 
   it('지원하지 않는 연도는 OutOfRangeError', () => {
-    expect(() => holidaysOn(d('2023-12-31'))).toThrow(OutOfRangeError)
+    expect(() => holidaysOn(d('2014-12-31'))).toThrow(OutOfRangeError)
   })
 })
 

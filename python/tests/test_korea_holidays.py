@@ -6,7 +6,7 @@ import korea_holidays as kh
 
 
 def test_supported_years():
-    assert kh.SUPPORTED_YEARS == (2024, 2025, 2026, 2027)
+    assert kh.SUPPORTED_YEARS == tuple(range(2015, 2028))
     assert kh.PROVISIONAL_YEARS == (2027,)
 
 

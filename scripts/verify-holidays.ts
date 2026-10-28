@@ -1,6 +1,7 @@
 // 사용법: DATA_GO_KR_SERVICE_KEY=... node scripts/verify-holidays.ts [report.md]
-// 올해와 내년 공휴일을 공공데이터포털 특일정보와 비교한다. 차이가 있으면 리포트를 쓰고 GitHub Actions 출력 mismatch=true 를 남긴다.
+// 올해와 내년(VERIFY_ALL=true 면 지원하는 모든 연도) 공휴일을 공공데이터포털 특일정보와 비교한다. 차이가 있으면 리포트를 쓰고 GitHub Actions 출력 mismatch=true 를 남긴다.
 import { appendFileSync, writeFileSync } from 'node:fs'
+import { SUPPORTED_YEARS } from '../src/data/holidays.ts'
 import { diffYear, formatReport, hasMismatch, parseRestDeInfo, type OfficialHoliday } from './verify-lib.ts'
 
 const ENDPOINT = 'https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo'
@@ -44,7 +45,10 @@ const serviceKey = rawKey.includes('%') ? decodeURIComponent(rawKey) : rawKey
 
 const thisYear = new Date(Date.now() + 9 * 3_600_000).getUTCFullYear()
 const diffs = []
-for (const year of [thisYear, thisYear + 1]) {
+// 정기 실행은 올해·내년만, 데이터가 바뀌어 실행될 때(VERIFY_ALL=true)는 지원하는 모든 연도를 비교한다
+const years =
+  process.env.VERIFY_ALL === 'true' ? [...new Set([...SUPPORTED_YEARS, thisYear + 1])] : [thisYear, thisYear + 1]
+for (const year of years) {
   const official = await fetchYear(serviceKey, year)
   const diff = diffYear(year, official)
   // ::notice:: 로 남기면 Actions 실행 요약 화면에 바로 보인다

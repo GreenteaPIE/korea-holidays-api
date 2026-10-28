@@ -10,7 +10,7 @@ describe('GET /years', () => {
   it('지원 연도와 잠정 연도를 돌려준다', async () => {
     const { status, body } = await get('/years')
     expect(status).toBe(200)
-    expect(body.years).toEqual([2024, 2025, 2026, 2027])
+    expect(body.years).toEqual([2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027])
     expect(body.provisional).toEqual([2027])
   })
 })

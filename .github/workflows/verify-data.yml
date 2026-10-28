@@ -29,6 +29,7 @@ jobs:
         run: node scripts/verify-holidays.ts report.md
         env:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          VERIFY_ALL: ${{ github.event_name != 'schedule' }}
       - if: steps.verify.outputs.mismatch == 'true'
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,27 @@
+name: Publish korea-payroll to npm
+
+# korea-payroll-api 저장소의 코드를 이 저장소의 NPM_TOKEN 으로 npm 에 배포한다.
+# (GitHub Secrets 는 저장소끼리 공유되지 않는다.) 첫 배포용이며, 이후에는 npm 의 Trusted Publishing 을
+# korea-payroll-api 저장소의 publish-npm.yml 로 설정하면 그쪽 Release 로 배포할 수 있다.
+# provenance 는 배포하는 저장소와 package.json 의 repository 가 같아야 해서 여기서는 붙이지 않는다.
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: GreenteaPIE/korea-payroll-api
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      # prepublishOnly 가 타입 검사·테스트·빌드를 한다
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

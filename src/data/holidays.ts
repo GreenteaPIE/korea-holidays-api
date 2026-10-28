@@ -8,7 +8,7 @@
  * 공식 발표 전 연도는 PROVISIONAL_YEARS 에 넣는다.
  */
 
-export type HolidayType = 'national' | 'substitute' | 'temporary' | 'election'
+export type HolidayType = 'national' | 'substitute' | 'temporary' | 'election' | 'observance'
 
 export interface Holiday {
   /** YYYY-MM-DD */

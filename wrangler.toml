@@ -1,3 +1,19 @@
 name = "korea-holidays-api"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
+
+# IP 당 분당 120회. 넘으면 429 를 돌려준다.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 120
+  period = 60
+
+# Cloudflare 대시보드에서 요청 로그와 사용량을 볼 수 있게 한다.
+[observability]
+enabled = true
+
+# 커스텀 도메인을 연결하려면 Cloudflare 에 등록한 도메인으로 아래 주석을 풀고 바꾼다.
+# routes = [{ pattern = "api.example.com", custom_domain = true }]

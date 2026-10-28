@@ -29,3 +29,24 @@ export function isWeekend(date: Date): boolean {
 export function weekdayKo(date: Date): string {
   return WEEKDAYS_KO[date.getUTCDay()]!
 }
+
+export class InvalidDateError extends Error {
+  readonly value: unknown
+  constructor(value: unknown) {
+    super(`올바른 날짜가 아닙니다: ${String(value)} (YYYY-MM-DD 형식 또는 Date)`)
+    this.name = 'InvalidDateError'
+    this.value = value
+  }
+}
+
+/** 'YYYY-MM-DD' 는 그대로, Date 는 한국 시간(KST) 기준 날짜로 바꾼다. */
+export function toCalendarDate(input: string | Date): Date {
+  if (typeof input === 'string') {
+    const date = parseDate(input)
+    if (!date) throw new InvalidDateError(input)
+    return date
+  }
+  if (Number.isNaN(input.getTime())) throw new InvalidDateError(input)
+  const kst = new Date(input.getTime() + 9 * 3_600_000)
+  return new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()))
+}

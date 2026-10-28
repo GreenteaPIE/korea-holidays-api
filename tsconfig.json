@@ -12,10 +12,13 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
   },
   "include": [
     "src",
-    "test"
+    "test",
+    "scripts/verify-lib.ts"
   ]
 }

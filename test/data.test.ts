@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { HOLIDAYS } from '../src/data/holidays'
-import { isWeekend, parseDate } from '../src/lib/date'
+import { HOLIDAYS } from '../src/data/holidays.ts'
+import { isWeekend, parseDate } from '../src/lib/date.ts'
 
 describe('공휴일 데이터 무결성', () => {
   for (const [year, holidays] of Object.entries(HOLIDAYS)) {

@@ -1,0 +1,35 @@
+name: Verify Holiday Data
+
+# 매주 월요일 오전 9시 17분(KST)에 공공데이터포털 특일정보와 비교하고, 차이가 있으면 이슈를 만든다.
+on:
+  schedule:
+    - cron: '17 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - id: verify
+        run: node scripts/verify-holidays.ts report.md
+        env:
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+      - if: steps.verify.outputs.mismatch == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 공휴일 데이터 불일치 감지
+        run: |
+          number=$(gh issue list --state open --search "in:title $TITLE" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file report.md
+          else
+            gh issue create --title "$TITLE" --body-file report.md
+          fi

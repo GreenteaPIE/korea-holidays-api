@@ -47,7 +47,8 @@ const diffs = []
 for (const year of [thisYear, thisYear + 1]) {
   const official = await fetchYear(serviceKey, year)
   const diff = diffYear(year, official)
-  console.log(`${year}: 공식 ${official.length}건, 누락 ${diff.missing.length}건, 초과 ${diff.extra.length}건`)
+  // ::notice:: 로 남기면 Actions 실행 요약 화면에 바로 보인다
+  console.log(`::notice::${year}년: 공식 ${official.length}건, 누락 ${diff.missing.length}건, 초과 ${diff.extra.length}건`)
   diffs.push(diff)
 }
 

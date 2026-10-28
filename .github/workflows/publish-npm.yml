@@ -1,7 +1,8 @@
 name: Publish to npm
 
 # GitHub 에서 Release 를 발행하면 npm 에 korea-holidays 패키지를 배포한다.
-# 저장소 Secrets 에 NPM_TOKEN 이 필요하다. Release 태그는 package.json 의 version 과 같아야 한다 (예: v0.2.0).
+# 인증은 npm Trusted Publishing(OIDC)을 쓰고, 설정 전(첫 배포)에는 저장소 Secrets 의 NPM_TOKEN 을 쓴다.
+# Release 태그는 package.json 의 version 과 같아야 한다 (예: v0.2.0).
 on:
   release:
     types: [published]
@@ -21,6 +22,8 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+      # Trusted Publishing(토큰 없는 OIDC 배포)은 npm 11.5 이상에서만 동작한다
+      - run: npm install -g npm@11
       - run: npm ci
       - name: Check tag matches package version
         if: github.event_name == 'release'

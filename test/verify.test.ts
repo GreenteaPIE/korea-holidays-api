@@ -46,6 +46,11 @@ describe('diffYear', () => {
     expect(formatReport([diff])).toContain('2026-01-02 임시공휴일')
   })
 
+  it('공식 데이터에 빠진 것으로 알려진 날은 초과로 잡지 않는다', () => {
+    const official2015 = [{ date: '2015-01-01', name: '1월1일' }]
+    expect(diffYear(2015, official2015).extra.map((h) => h.date)).not.toContain('2015-08-14')
+  })
+
   it('지원하지 않는 연도는 공식 데이터가 있을 때만 알린다', () => {
     expect(hasMismatch(diffYear(2030, []))).toBe(false)
     const diff = diffYear(2030, [{ date: '2030-01-01', name: '1월1일' }])

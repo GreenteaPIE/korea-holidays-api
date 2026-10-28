@@ -15,6 +15,14 @@ export interface YearDiff {
   extra: OfficialHoliday[]
 }
 
+/**
+ * 공식 특일정보에 빠져 있지만 실제로 공휴일이었던 날. 비교에서 "초과"로 잡지 않는다.
+ * 새로 넣을 때는 근거(국무회의 의결·관보)를 함께 적는다.
+ */
+export const KNOWN_MISSING_FROM_OFFICIAL: ReadonlyMap<string, string> = new Map([
+  ['2015-08-14', '광복 70주년 임시공휴일 (2015.8.4 국무회의 의결). 특일정보 API 에는 없음'],
+])
+
 interface RestDeItem {
   dateName: string
   isHoliday: string
@@ -48,7 +56,11 @@ export function diffYear(year: number, official: readonly OfficialHoliday[]): Ye
     year,
     supported: true,
     missing: unique(official.filter((h) => !ourDates.has(h.date))),
-    extra: unique(ours.filter((h) => !officialDates.has(h.date)).map((h) => ({ date: h.date, name: h.name }))),
+    extra: unique(
+      ours
+        .filter((h) => !officialDates.has(h.date) && !KNOWN_MISSING_FROM_OFFICIAL.has(h.date))
+        .map((h) => ({ date: h.date, name: h.name })),
+    ),
   }
 }
 

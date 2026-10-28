@@ -1,5 +1,12 @@
 # 🇰🇷 Korea Holidays API
 
+[![npm version](https://img.shields.io/npm/v/korea-holidays?color=cb3837&logo=npm)](https://www.npmjs.com/package/korea-holidays)
+[![npm downloads](https://img.shields.io/npm/dm/korea-holidays?color=cb3837)](https://www.npmjs.com/package/korea-holidays)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/korea-holidays)](https://bundlephobia.com/package/korea-holidays)
+[![Test & Deploy](https://github.com/GreenteaPIE/korea-holidays-api/actions/workflows/deploy.yml/badge.svg)](https://github.com/GreenteaPIE/korea-holidays-api/actions/workflows/deploy.yml)
+[![Verify Holiday Data](https://github.com/GreenteaPIE/korea-holidays-api/actions/workflows/verify-data.yml/badge.svg)](https://github.com/GreenteaPIE/korea-holidays-api/actions/workflows/verify-data.yml)
+[![license](https://img.shields.io/npm/l/korea-holidays)](LICENSE)
+
 대한민국 공휴일·영업일 Open API & 라이브러리 — 대체공휴일·임시공휴일·연차 추천·캘린더 구독까지, API 키 없이 바로 사용
 
 **🔗 API 주소:** https://korea-holidays-api.greenteapie2023.workers.dev  

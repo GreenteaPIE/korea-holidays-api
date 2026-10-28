@@ -84,3 +84,38 @@ def test_vacation_tips():
     assert all(len(t.leave_dates) <= 3 for t in tips)
     ordered = sorted(tips, key=lambda t: t.start)
     assert all(b.start > a.end for a, b in zip(ordered, ordered[1:]))
+
+
+def test_payday():
+    assert kh.adjust_to_business_day("2026-10-25") == date(2026, 10, 23)
+    assert kh.adjust_to_business_day("2026-10-03", "next") == date(2026, 10, 6)
+    assert kh.adjust_to_business_day("2026-02-28", "modified-next") == date(2026, 2, 27)
+    assert kh.adjust_to_business_day("2026-03-01", "modified-previous") == date(2026, 3, 3)
+    assert kh.nth_business_day(2026, 10, 5) == date(2026, 10, 8)
+    assert kh.nth_business_day(2026, 12, -1) == date(2026, 12, 31)
+    assert kh.nth_business_day(2026, 10, 30) is None
+    assert len(kh.business_days_in_month(2026, 10)) == 20
+    assert len(kh.business_days_in_month(2026, 10, weekend="sun")) == 24
+
+
+def test_annual_leave():
+    assert [kh.annual_leave_days(n) for n in (1, 2, 3, 4, 5, 20, 21, 30)] == [15, 15, 16, 16, 17, 24, 25, 25]
+    r = kh.annual_leave("2026-01-31", "2026-04-15")
+    assert (r.years_of_service, r.current_days, r.current_kind) == (0, 2, "monthly")
+    assert [g.date for g in r.schedule[:3]] == [date(2026, 2, 28), date(2026, 3, 31), date(2026, 4, 30)]
+    r = kh.annual_leave("2024-03-02", "2026-10-28")
+    assert (r.years_of_service, r.current_days, r.next.date, r.next.days) == (2, 15, date(2027, 3, 2), 16)
+    assert kh.annual_leave("2025-10-28", "2026-10-28").current_kind == "annual"
+    with pytest.raises(ValueError):
+        kh.annual_leave("2026-10-28", "2026-10-27")
+
+
+def test_shipping_date():
+    kst = timezone(timedelta(hours=9))
+    r = kh.shipping_date(datetime(2026, 10, 28, 13, 0, tzinfo=kst), delivery_days=1)
+    assert (r.before_cutoff, r.ship_date, r.arrival_date) == (True, date(2026, 10, 28), date(2026, 10, 29))
+    assert kh.shipping_date(datetime(2026, 10, 28, 15, 0, tzinfo=kst)).ship_date == date(2026, 10, 29)
+    assert kh.shipping_date(datetime(2026, 10, 2, 15, 0, tzinfo=kst)).ship_date == date(2026, 10, 6)
+    assert kh.shipping_date(datetime(2026, 10, 9, 12, 0), weekend="sun").ship_date == date(2026, 10, 10)
+    with pytest.raises(ValueError):
+        kh.shipping_date(cutoff="25:00")

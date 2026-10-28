@@ -136,3 +136,37 @@ export function nextHolidays(from: Date, count: number): UpcomingHoliday[] {
     .slice(0, count)
     .map((h) => ({ ...h, daysUntil: Math.round((Date.parse(h.date) - from.getTime()) / 86_400_000) }))
 }
+
+/**
+ * 휴일이면 영업일로 옮기는 규칙 (급여일·결제일 등).
+ * - previous: 앞 영업일, next: 뒤 영업일
+ * - modified-previous / modified-next: 그 방향으로 옮기다 달이 바뀌면 반대 방향으로 (금융권 관행)
+ */
+export type AdjustRule = 'previous' | 'next' | 'modified-previous' | 'modified-next'
+
+export function adjustToBusinessDay(date: Date, rule: AdjustRule, options: CalendarOptions = {}): Date {
+  const move = (step: number) => {
+    let d = date
+    while (!isBusinessDay(d, options)) d = addDays(d, step)
+    return d
+  }
+  const step = rule === 'previous' || rule === 'modified-previous' ? -1 : 1
+  const moved = move(step)
+  if (rule.startsWith('modified-') && moved.getUTCMonth() !== date.getUTCMonth()) return move(-step)
+  return moved
+}
+
+/** 해당 월의 영업일 목록 (month 는 1~12) */
+export function businessDaysInMonth(year: number, month: number, options: CalendarOptions = {}): Date[] {
+  const days: Date[] = []
+  for (let d = new Date(Date.UTC(year, month - 1, 1)); d.getUTCMonth() === month - 1; d = addDays(d, 1)) {
+    if (isBusinessDay(d, options)) days.push(d)
+  }
+  return days
+}
+
+/** 해당 월의 n 번째 영업일. 음수면 뒤에서부터 (-1 은 마지막 영업일). 없으면 null. */
+export function nthBusinessDay(year: number, month: number, n: number, options: CalendarOptions = {}): Date | null {
+  const days = businessDaysInMonth(year, month, options)
+  return (n > 0 ? days[n - 1] : days[days.length + n]) ?? null
+}

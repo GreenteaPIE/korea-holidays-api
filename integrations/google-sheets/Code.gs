@@ -90,6 +90,50 @@ function KR_BUSINESSDAYS(from, to, weekend) {
 }
 
 /**
+ * 휴일이면 영업일로 옮긴 날짜 (급여일·결제일).
+ *
+ * @param {Date|string} date 원래 날짜
+ * @param {string} rule "previous"(앞 영업일, 기본), "next"(뒤 영업일), "modified-previous", "modified-next"(달이 바뀌면 반대 방향)
+ * @param {string} weekend 휴무 요일: "sat-sun"(기본), "sun", "none"
+ * @return {Date} 영업일
+ * @customfunction
+ */
+function KR_ADJUSTBUSINESSDAY(date, rule, weekend) {
+  var original = krDateString_(date)
+  var r = rule || 'previous'
+  var move = function (step) {
+    var d = original
+    while (!krIsBusinessDay_(d, weekend)) d = krAddDays_(d, step)
+    return d
+  }
+  var step = r === 'previous' || r === 'modified-previous' ? -1 : 1
+  var moved = move(step)
+  if (r.indexOf('modified-') === 0 && moved.slice(0, 7) !== original.slice(0, 7)) moved = move(-step)
+  return Utilities.parseDate(moved, KR_TZ, 'yyyy-MM-dd')
+}
+
+/**
+ * 그 달의 N번째 영업일 (정산일). N 이 음수면 뒤에서부터, -1 은 마지막 영업일.
+ *
+ * @param {number} year 연도
+ * @param {number} month 월 (1~12)
+ * @param {number} n 몇 번째
+ * @param {string} weekend 휴무 요일: "sat-sun"(기본), "sun", "none"
+ * @return {Date} 영업일
+ * @customfunction
+ */
+function KR_NTHBUSINESSDAY(year, month, n, weekend) {
+  var prefix = year + '-' + ('0' + month).slice(-2)
+  var days = []
+  for (var d = prefix + '-01'; d.slice(0, 7) === prefix; d = krAddDays_(d, 1)) {
+    if (krIsBusinessDay_(d, weekend)) days.push(d)
+  }
+  var result = n > 0 ? days[n - 1] : days[days.length + n]
+  if (!result || n === 0) throw new Error(year + '년 ' + month + '월에는 ' + Math.abs(n) + '번째 영업일이 없습니다')
+  return Utilities.parseDate(result, KR_TZ, 'yyyy-MM-dd')
+}
+
+/**
  * 한 해의 공휴일 표 (날짜, 이름, 종류). 셀 하나에 넣으면 아래로 펼쳐집니다.
  *
  * @param {number} year 연도 (예: 2026)

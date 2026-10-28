@@ -1,0 +1,38 @@
+name: 📅 공휴일 데이터 오류 제보
+description: 빠졌거나 잘못된 공휴일, 새로 지정된 임시공휴일을 알려주세요
+title: '[데이터] '
+labels: [data]
+body:
+  - type: markdown
+    attributes:
+      value: 제보 감사합니다! 확인되면 API·npm·PyPI 데이터에 함께 반영됩니다.
+  - type: input
+    id: date
+    attributes:
+      label: 날짜
+      placeholder: 2027-05-03
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 어떤 문제인가요?
+      options:
+        - 공휴일이 빠져 있어요 (새 임시공휴일 포함)
+        - 공휴일이 아닌데 들어 있어요
+        - 이름이나 종류가 틀렸어요
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: 공휴일 이름
+      placeholder: 임시공휴일, 대체공휴일(노동절) 등
+  - type: input
+    id: source
+    attributes:
+      label: 근거
+      description: 정부 발표·관보·기사 링크가 있으면 빠르게 반영할 수 있어요
+      placeholder: https://www.korea.kr/...
+    validations:
+      required: true

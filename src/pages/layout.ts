@@ -73,4 +73,28 @@ export const BASE_CSS = `
   footer { margin-top: 56px; color: var(--muted); font-size: 14px; }
   footer a { color: var(--blue); }
   a { color: var(--blue); }
+  a.card { text-decoration: none; color: inherit; }
+  /* button 의 display 지정이 hidden 속성을 덮어쓰지 않게 */
+  [hidden] { display: none !important; }
 `
+
+/**
+ * 카카오톡 공유. 카카오 개발자 콘솔에서 만든 JavaScript 키(wrangler.toml 의 KAKAO_JS_KEY)가 있을 때만 켜진다.
+ * JavaScript 키는 등록한 도메인에서만 동작하는 공개 키라 페이지에 넣어도 된다.
+ * SDK 버전을 바꿀 때는 https://developers.kakao.com/docs/latest/ko/javascript/download 의 integrity 값을 함께 넣는다.
+ */
+export function kakaoScript(key: string | undefined): string {
+  if (!key) return ''
+  return `<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js" crossorigin="anonymous"></script>
+<script>
+  try { Kakao.init(${JSON.stringify(key)}) } catch {}
+  window.kakaoShare = (title, description, imagePath, url) => Kakao.Share.sendDefault({
+    objectType: 'feed',
+    content: { title, description, imageUrl: location.origin + imagePath, link: { mobileWebUrl: url, webUrl: url } },
+    buttons: [{ title: '결과 보기', link: { mobileWebUrl: url, webUrl: url } }],
+  })
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.Kakao && Kakao.isInitialized()) document.querySelectorAll('[data-kakao]').forEach((b) => (b.hidden = false))
+  })
+</script>`
+}

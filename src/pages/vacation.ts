@@ -1,13 +1,14 @@
 // `/vacation` 연차 꿀조합 계산기. 개발자가 아닌 사람도 쓰는 페이지라, 결과를 공유하기 쉽게 만든다.
-import { BASE_CSS, GITHUB_URL, NPM_URL, SITE_URL, head } from './layout.ts'
+import { BASE_CSS, GITHUB_URL, NPM_URL, SITE_URL, head, kakaoScript } from './layout.ts'
 
 export interface VacationPageConfig {
   years: number[]
   defaultYear: number
   provisional: number[]
+  kakaoKey?: string
 }
 
-export function vacationHtml(config: VacationPageConfig): string {
+export function vacationHtml({ kakaoKey, ...config }: VacationPageConfig): string {
   const year = config.defaultYear
   return /* html */ `<!doctype html>
 <html lang="ko">
@@ -96,6 +97,7 @@ ${BASE_CSS}
   <div class="share">
     <button type="button" class="primary" id="share">결과 공유하기</button>
     <button type="button" id="copy">링크 복사</button>
+    <button type="button" id="kakao" data-kakao hidden>카카오톡 공유</button>
   </div>
 
   <h2 id="weekends-title">연차 없이 쉬는 연휴</h2>
@@ -242,8 +244,12 @@ ${BASE_CSS}
     } else copyLink($('copy'))
   })
 
+  $('kakao').addEventListener('click', () =>
+    window.kakaoShare(state.year + ' 연차 꿀조합 계산기', $('summary').textContent, '/og-vacation.png', shareUrl()))
+
   render()
 </script>
+${kakaoScript(kakaoKey)}
 </body>
 </html>`
 }

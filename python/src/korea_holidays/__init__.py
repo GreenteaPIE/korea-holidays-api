@@ -16,7 +16,7 @@ from datetime import date, datetime, timedelta, timezone
 from importlib import resources
 from typing import Dict, Iterable, List, Literal, Optional, Sequence, Set, Tuple, Union
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "Holiday",
@@ -36,12 +36,23 @@ __all__ = [
     "next_holidays",
     "long_weekends",
     "vacation_tips",
+    "adjust_to_business_day",
+    "business_days_in_month",
+    "nth_business_day",
+    "LeaveGrant",
+    "AnnualLeave",
+    "annual_leave",
+    "annual_leave_days",
+    "ShippingDate",
+    "shipping_date",
 ]
 
 HolidayType = Literal["national", "substitute", "temporary", "election", "observance"]
 WeekendMode = Literal["sat-sun", "sun", "none"]
 DateInput = Union[date, datetime, str]
 DayKind = Literal["business", "weekend", "holiday"]
+AdjustRule = Literal["previous", "next", "modified-previous", "modified-next"]
+LeaveGrantKind = Literal["monthly", "annual"]
 
 KST = timezone(timedelta(hours=9))
 
@@ -374,3 +385,204 @@ def vacation_tips(
         )
         for s, e, leave in picked
     ]
+
+
+# ---------- 급여일·정산일 ----------
+
+
+def adjust_to_business_day(
+    value: DateInput,
+    rule: AdjustRule = "previous",
+    weekend: WeekendMode = "sat-sun",
+    include: Iterable[DateInput] = (),
+    exclude: Iterable[DateInput] = (),
+) -> date:
+    """휴일이면 영업일로 옮긴 날짜 (급여일·결제일).
+
+    rule: previous(앞 영업일), next(뒤 영업일), modified-previous / modified-next(그 방향으로 옮기다 달이 바뀌면 반대 방향).
+    """
+    if rule not in ("previous", "next", "modified-previous", "modified-next"):
+        raise ValueError(f"알 수 없는 rule 입니다: {rule!r}")
+    options = _Options(weekend, include, exclude)
+    original = _to_date(value)
+
+    def move(step: int) -> date:
+        d = original
+        while options.kind(d) != "business":
+            d += timedelta(days=step)
+        return d
+
+    step = -1 if rule in ("previous", "modified-previous") else 1
+    moved = move(step)
+    if rule.startswith("modified-") and moved.month != original.month:
+        return move(-step)
+    return moved
+
+
+def business_days_in_month(
+    year: int,
+    month: int,
+    weekend: WeekendMode = "sat-sun",
+    include: Iterable[DateInput] = (),
+    exclude: Iterable[DateInput] = (),
+) -> List[date]:
+    """해당 월(1~12)의 영업일 목록."""
+    options = _Options(weekend, include, exclude)
+    days: List[date] = []
+    d = date(year, month, 1)
+    while d.month == month:
+        if options.kind(d) == "business":
+            days.append(d)
+        d += timedelta(days=1)
+    return days
+
+
+def nth_business_day(
+    year: int,
+    month: int,
+    n: int,
+    weekend: WeekendMode = "sat-sun",
+    include: Iterable[DateInput] = (),
+    exclude: Iterable[DateInput] = (),
+) -> Optional[date]:
+    """해당 월의 n 번째 영업일. 음수면 뒤에서부터 (-1 은 마지막 영업일). 없으면 None."""
+    days = business_days_in_month(year, month, weekend, include, exclude)
+    if n == 0 or abs(n) > len(days):
+        return None
+    return days[n - 1] if n > 0 else days[n]
+
+
+# ---------- 연차 (근로기준법 제60조) ----------
+
+
+@dataclass(frozen=True)
+class LeaveGrant:
+    #: 연차가 생기는 날
+    date: date
+    days: int
+    kind: LeaveGrantKind
+    #: 근속 연수 (monthly 는 0)
+    service_year: int
+    #: 사용 기한 (이 날까지 사용)
+    expires: date
+
+
+@dataclass(frozen=True)
+class AnnualLeave:
+    hire_date: date
+    as_of: date
+    years_of_service: int
+    current_days: int
+    current_kind: LeaveGrantKind
+    current_expires: date
+    next: LeaveGrant
+    schedule: List[LeaveGrant]
+
+
+_MAX_LEAVE_DAYS = 25
+
+
+def annual_leave_days(service_year: int) -> int:
+    """근속 n 년차(n >= 1)에 생기는 연차 일수: 15일에서 3년차부터 2년마다 1일, 최대 25일."""
+    return min(_MAX_LEAVE_DAYS, 15 + (service_year - 1) // 2)
+
+
+def _add_months(d: date, months: int) -> date:
+    """말일 보정: 1/31 + 1개월 = 2/28(또는 29)."""
+    index = d.month - 1 + months
+    year, month = d.year + index // 12, index % 12 + 1
+    next_month = date(year + (month // 12), month % 12 + 1, 1)
+    last_day = (next_month - timedelta(days=1)).day
+    return date(year, month, min(d.day, last_day))
+
+
+def annual_leave(hire_date: DateInput, as_of: Optional[DateInput] = None, schedule_years: int = 10) -> AnnualLeave:
+    """입사일 기준 연차 (개근·출근율 80% 이상 가정, 상시 5명 미만 사업장 제외).
+
+    1년 미만은 1개월 개근마다 1일(최대 11일, 입사일로부터 1년 안에 사용), 1년 이상 15일,
+    3년 이상은 최초 1년을 넘는 근속 2년마다 1일씩 더해 최대 25일.
+    """
+    hire = _to_date(hire_date)
+    base = _to_date(as_of) if as_of is not None else _today_kst()
+    if base < hire:
+        raise ValueError("기준일이 입사일보다 빠릅니다")
+    one_day = timedelta(days=1)
+    first_year_end = _add_months(hire, 12) - one_day
+
+    schedule = [LeaveGrant(_add_months(hire, k), 1, "monthly", 0, first_year_end) for k in range(1, 12)]
+
+    years = 0
+    while _add_months(hire, 12 * (years + 1)) <= base:
+        years += 1
+
+    # 기준일 이후로 몇 해를 더 보여준다. 25일에 다다르면 그 뒤는 같으므로 거기까지만.
+    for n in range(1, max(years + 1, schedule_years) + 1):
+        schedule.append(
+            LeaveGrant(_add_months(hire, 12 * n), annual_leave_days(n), "annual", n, _add_months(hire, 12 * (n + 1)) - one_day)
+        )
+        if n > years and annual_leave_days(n) == _MAX_LEAVE_DAYS:
+            break
+
+    if years == 0:
+        current_days = sum(1 for g in schedule if g.kind == "monthly" and g.date <= base)
+        current_kind: LeaveGrantKind = "monthly"
+        current_expires = first_year_end
+    else:
+        grant = next(g for g in schedule if g.kind == "annual" and g.service_year == years)
+        current_days, current_kind, current_expires = grant.days, "annual", grant.expires
+
+    return AnnualLeave(
+        hire_date=hire,
+        as_of=base,
+        years_of_service=years,
+        current_days=current_days,
+        current_kind=current_kind,
+        current_expires=current_expires,
+        next=next(g for g in schedule if g.date > base),
+        schedule=schedule,
+    )
+
+
+# ---------- 쇼핑몰 출고일 ----------
+
+
+@dataclass(frozen=True)
+class ShippingDate:
+    #: 주문 시각 (한국 시간)
+    ordered_at: datetime
+    cutoff: str
+    #: 오늘 마감 안에 들어와 오늘부터 처리되는지
+    before_cutoff: bool
+    ship_date: date
+    arrival_date: Optional[date]
+
+
+def shipping_date(
+    now: Optional[datetime] = None,
+    cutoff: str = "14:00",
+    processing_days: int = 0,
+    delivery_days: Optional[int] = None,
+    weekend: WeekendMode = "sat-sun",
+    include: Iterable[DateInput] = (),
+    exclude: Iterable[DateInput] = (),
+) -> ShippingDate:
+    """지금 주문하면 언제 출고·도착하는지. 마감(한국 시간) 전이고 영업일이면 오늘부터, 아니면 다음 영업일부터 처리한다.
+
+    시간대 없는 now 는 한국 시간으로 본다.
+    """
+    import re
+
+    match = re.fullmatch(r"([01]\d|2[0-3]):([0-5]\d)", cutoff)
+    if not match:
+        raise ValueError(f"cutoff 는 HH:MM 형식이어야 합니다: {cutoff!r}")
+    kst = (now or datetime.now(KST))
+    kst = kst.astimezone(KST) if kst.tzinfo else kst.replace(tzinfo=KST)
+    include, exclude = list(include), list(exclude)
+    opts = dict(weekend=weekend, include=include, exclude=exclude)
+    today = kst.date()
+    minutes = kst.hour * 60 + kst.minute
+    before = is_business_day(today, **opts) and minutes < int(match.group(1)) * 60 + int(match.group(2))
+    start = today if before else add_business_days(today, 1, **opts)
+    ship = add_business_days(start, processing_days, **opts)
+    arrival = add_business_days(ship, delivery_days, **opts) if delivery_days is not None else None
+    return ShippingDate(kst.replace(second=0, microsecond=0), cutoff, before, ship, arrival)

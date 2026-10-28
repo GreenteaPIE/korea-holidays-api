@@ -1,0 +1,21 @@
+name: 🐛 버그 제보
+description: API·패키지·계산기가 이상하게 동작해요
+labels: [bug]
+body:
+  - type: dropdown
+    id: where
+    attributes:
+      label: 어디서 생겼나요?
+      options: [웹 API, npm 패키지, Python 패키지, 연차 계산기 페이지, 출고일 위젯, 구글 시트 함수, MCP, 기타]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 무슨 일이 있었나요?
+      description: 호출한 주소나 코드, 기대한 결과와 실제 결과를 적어 주세요
+      placeholder: |
+        GET /business-days/add?date=2026-09-23&days=3
+        기대: 2026-09-30 / 실제: ...
+    validations:
+      required: true

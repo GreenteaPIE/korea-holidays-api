@@ -35,6 +35,10 @@ const base = `
   .grid .sat { color: #0047a0; }
   .grid .off { background: #fbeaeb; }
   .grid .leave { background: #0047a0; color: #fff; }
+  .steps .row { display: flex; justify-content: space-between; font-size: 24px; padding: 12px 6px; border-top: 2px solid #f1f1ee; }
+  .steps .row span { color: #6e6e73; font-weight: 500; }
+  .steps .row b { font-weight: 800; }
+  .steps .row.hl b { color: #cd2e3a; }
 `
 
 function calendar(title, year, month, marks) {
@@ -75,6 +79,37 @@ const pages = {
       ${calendar('2027년 9월', 2027, 9, { 11: 'off', 12: 'off', 13: 'leave', 14: 'off', 15: 'off', 16: 'off', 17: 'leave', 18: 'off', 19: 'off' })}
     </div>
     <div class="url">연차 계산기 · /vacation</div>`,
+  'og-annual-leave.png': `
+    <div class="bar"></div>
+    <div class="wrap">
+      <div class="text">
+        <div class="eyebrow">근로기준법 자동 계산</div>
+        <h1>내 연차<br>몇 개일까?</h1>
+        <p>입사일만 넣으면 지금 연차,<br>다음 연차 생기는 날까지</p>
+        <div class="chips"><span class="chip">1년 미만 월차</span><span class="chip">근속 가산</span><span class="chip">사용 기한</span></div>
+      </div>
+      <div class="cal steps">
+        <div class="title">근속 연수별 연차</div>
+        <div class="row"><span>1년 미만</span><b>매달 1일</b></div>
+        <div class="row"><span>1~2년</span><b>15일</b></div>
+        <div class="row"><span>3~4년</span><b>16일</b></div>
+        <div class="row"><span>5~6년</span><b>17일</b></div>
+        <div class="row hl"><span>21년~</span><b>25일</b></div>
+      </div>
+    </div>
+    <div class="url">연차 계산기 · /annual-leave</div>`,
+  'og-en.png': `
+    <div class="bar"></div>
+    <div class="wrap">
+      <div class="text">
+        <div class="eyebrow">FREE API · npm · PyPI</div>
+        <h1>Korean Public<br>Holidays API</h1>
+        <p>Substitute & temporary holidays,<br>business days, no API key</p>
+        <div class="chips"><span class="chip">Business days</span><span class="chip">iCal feed</span><span class="chip">MCP</span></div>
+      </div>
+      ${calendar('October 2026', 2026, 10, { 3: 'off', 4: 'off', 5: 'off', 9: 'off', 10: 'off', 11: 'off' }).replace(/>(일|월|화|수|목|금|토)</g, (m, d) => '>' + { 일: 'S', 월: 'M', 화: 'T', 수: 'W', 목: 'T', 금: 'F', 토: 'S' }[d] + '<')}
+    </div>
+    <div class="url">korea-holidays-api.greenteapie2023.workers.dev/en</div>`,
 }
 
 ;(async () => {

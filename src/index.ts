@@ -8,25 +8,36 @@ import {
   PROVISIONAL_YEARS,
   SUPPORTED_YEARS,
   addBusinessDays,
+  adjustToBusinessDay,
+  annualLeave,
+  businessDaysInMonth,
   countBusinessDays,
   getDayInfo,
   getHolidays,
   isProvisional,
   longWeekends,
   nextHolidays,
+  nthBusinessDay,
+  shippingDate,
   toIcs,
   vacationTips,
   type CalendarOptions,
 } from './lib/index.ts'
+import { handleMcp } from './mcp.ts'
 import { LANDING_HTML } from './pages/landing.ts'
 import { vacationHtml } from './pages/vacation.ts'
+import { annualLeaveHtml } from './pages/annual-leave.ts'
+import { enHtml } from './pages/en.ts'
+import { widgetHtml } from './pages/widget.ts'
 
 type Bindings = {
   /** wrangler.toml 의 [[ratelimits]]. 로컬 테스트에서는 없다. */
   RATE_LIMITER?: RateLimit
+  /** 카카오톡 공유용 JavaScript 키 (wrangler.toml [vars]). 없으면 공유 버튼을 숨긴다. */
+  KAKAO_JS_KEY?: string
 }
 
-const VERSION = '0.2.0'
+const VERSION = '0.3.0'
 
 // ---------- 스키마 ----------
 
@@ -337,6 +348,164 @@ const icsRoute = createRoute({
   },
 })
 
+const MonthQuery = {
+  year: z.coerce.number().int().openapi({ example: 2026 }),
+  month: z.coerce.number().int().min(1).max(12).openapi({ example: 10 }),
+}
+
+const adjustRoute = createRoute({
+  method: 'get',
+  path: '/business-days/adjust',
+  tags: ['Business Days'],
+  summary: '휴일이면 영업일로 옮기기 (급여일·결제일)',
+  description:
+    'previous: 앞 영업일(급여일), next: 뒤 영업일(결제일), modified-*: 그 방향으로 옮기다 달이 바뀌면 반대 방향 (금융권 관행)',
+  request: {
+    query: z.object({
+      date: DateString.openapi({ example: '2026-10-25' }),
+      rule: z.enum(['previous', 'next', 'modified-previous', 'modified-next']).optional().openapi({ description: '기본 previous' }),
+      ...optionsQuery,
+    }),
+  },
+  responses: {
+    200: json(
+      z.object({
+        date: z.string().openapi({ example: '2026-10-25' }),
+        rule: z.string().openapi({ example: 'previous' }),
+        result: z.string().openapi({ example: '2026-10-23' }),
+        weekday: z.string().openapi({ example: '금' }),
+        adjusted: z.boolean().openapi({ description: '날짜가 바뀌었는지' }),
+      }),
+      '조정 결과',
+    ),
+    ...errorResponse,
+  },
+})
+
+const nthRoute = createRoute({
+  method: 'get',
+  path: '/business-days/nth',
+  tags: ['Business Days'],
+  summary: '그 달의 N번째 영업일 (정산일)',
+  description: 'n 이 음수면 뒤에서부터 셉니다. -1 은 마지막 영업일입니다.',
+  request: {
+    query: z.object({
+      ...MonthQuery,
+      n: z.coerce.number().int().min(-31).max(31).refine((v) => v !== 0, { message: '0 이 아니어야 합니다' }).openapi({ example: 5 }),
+      ...optionsQuery,
+    }),
+  },
+  responses: {
+    200: json(
+      z.object({
+        year: z.number(),
+        month: z.number(),
+        n: z.number(),
+        result: z.string().openapi({ example: '2026-10-08' }),
+        weekday: z.string().openapi({ example: '목' }),
+      }),
+      'N번째 영업일',
+    ),
+    ...errorResponse,
+  },
+})
+
+const monthRoute = createRoute({
+  method: 'get',
+  path: '/business-days/month',
+  tags: ['Business Days'],
+  summary: '그 달의 영업일 목록',
+  request: { query: z.object({ ...MonthQuery, ...optionsQuery }) },
+  responses: {
+    200: json(
+      z.object({
+        year: z.number(),
+        month: z.number(),
+        count: z.number().openapi({ example: 20 }),
+        first: z.string().nullable().openapi({ example: '2026-10-01' }),
+        last: z.string().nullable().openapi({ example: '2026-10-30' }),
+        days: z.array(z.string()),
+      }),
+      '영업일 목록',
+    ),
+    ...errorResponse,
+  },
+})
+
+const annualLeaveRoute = createRoute({
+  method: 'get',
+  path: '/annual-leave',
+  tags: ['Annual Leave'],
+  summary: '입사일 기준 연차 개수',
+  description:
+    '근로기준법 제60조 기준입니다. 1년 미만은 1개월 개근마다 1일(최대 11일), 1년 이상은 15일, 3년차부터 2년마다 1일씩 늘어 최대 25일. 개근·출근율 80% 이상을 가정하며, 상시 5명 미만 사업장에는 적용되지 않습니다.',
+  request: {
+    query: z.object({
+      hireDate: DateString.openapi({ example: '2024-03-02', description: '입사일' }),
+      date: DateString.optional().openapi({ example: '2026-10-28', description: '기준일 (생략하면 오늘)' }),
+    }),
+  },
+  responses: {
+    200: json(
+      z.object({
+        hireDate: z.string(),
+        asOf: z.string(),
+        yearsOfService: z.number().openapi({ example: 2 }),
+        current: z.object({ days: z.number(), kind: z.enum(['monthly', 'annual']), expires: z.string() }),
+        next: z.object({
+          date: z.string(),
+          days: z.number(),
+          kind: z.enum(['monthly', 'annual']),
+          serviceYear: z.number(),
+          expires: z.string(),
+        }),
+        schedule: z.array(
+          z.object({
+            date: z.string(),
+            days: z.number(),
+            kind: z.enum(['monthly', 'annual']),
+            serviceYear: z.number(),
+            expires: z.string(),
+          }),
+        ),
+      }),
+      '연차 정보',
+    ),
+    ...errorResponse,
+  },
+})
+
+const shippingRoute = createRoute({
+  method: 'get',
+  path: '/shipping-date',
+  tags: ['Business Days'],
+  summary: '지금 주문하면 언제 출고? (쇼핑몰 배송 안내)',
+  description: '마감 시각 전이고 오늘이 영업일이면 오늘부터, 아니면 다음 영업일부터 처리합니다. 시각은 한국 시간 기준입니다.',
+  request: {
+    query: z.object({
+      cutoff: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().openapi({ example: '14:00', description: '당일 출고 마감 (기본 14:00)' }),
+      processingDays: z.coerce.number().int().min(0).max(30).optional().openapi({ example: 0, description: '출고까지 영업일 (기본 0 = 당일)' }),
+      deliveryDays: z.coerce.number().int().min(0).max(30).optional().openapi({ example: 1, description: '출고 후 도착까지 영업일' }),
+      ...optionsQuery,
+    }),
+  },
+  responses: {
+    200: json(
+      z.object({
+        orderedAt: z.string().openapi({ example: '2026-10-28T13:00' }),
+        cutoff: z.string(),
+        beforeCutoff: z.boolean(),
+        shipDate: z.string().openapi({ example: '2026-10-28' }),
+        shipWeekday: z.string(),
+        arrivalDate: z.string().nullable(),
+        arrivalWeekday: z.string().nullable(),
+      }),
+      '출고 예정일',
+    ),
+    ...errorResponse,
+  },
+})
+
 // ---------- 앱 ----------
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>({
@@ -443,6 +612,65 @@ app.openapi(icsRoute, (c) => {
   })
 })
 
+app.openapi(adjustRoute, (c) => {
+  const query = c.req.valid('query')
+  const rule = query.rule ?? 'previous'
+  const result = adjustToBusinessDay(query.date, rule, toOptions(query))
+  return c.json({ date: query.date, rule, result, weekday: getDayInfo(result).weekday, adjusted: result !== query.date }, 200)
+})
+
+app.openapi(nthRoute, (c) => {
+  const query = c.req.valid('query')
+  const result = nthBusinessDay(query.year, query.month, query.n, toOptions(query))
+  if (!result) {
+    const message = `${query.year}년 ${query.month}월에는 ${Math.abs(query.n)}번째 영업일이 없습니다`
+    return c.json({ error: { code: 'INVALID_PARAMETER' as const, message } }, 400)
+  }
+  return c.json({ year: query.year, month: query.month, n: query.n, result, weekday: getDayInfo(result).weekday }, 200)
+})
+
+app.openapi(monthRoute, (c) => {
+  const query = c.req.valid('query')
+  const days = businessDaysInMonth(query.year, query.month, toOptions(query))
+  return c.json(
+    { year: query.year, month: query.month, count: days.length, first: days[0] ?? null, last: days.at(-1) ?? null, days },
+    200,
+  )
+})
+
+// 브라우저로 그냥 열면 계산기 페이지, hireDate 가 있거나 API 호출이면 JSON
+app.use('/annual-leave', async (c, next) => {
+  if (c.req.method === 'GET' && !c.req.query('hireDate') && c.req.header('Accept')?.includes('text/html')) {
+    c.header('Cache-Control', 'public, max-age=3600')
+    return c.html(annualLeaveHtml(c.env?.KAKAO_JS_KEY))
+  }
+  await next()
+})
+
+app.openapi(annualLeaveRoute, (c) => {
+  const query = c.req.valid('query')
+  if (!query.date) c.header('Cache-Control', 'public, max-age=300')
+  return c.json(annualLeave(query.hireDate, query.date ?? new Date()), 200)
+})
+
+app.openapi(shippingRoute, (c) => {
+  const query = c.req.valid('query')
+  // 지금 시각에 따라 답이 바뀌므로 짧게 캐시
+  c.header('Cache-Control', 'public, max-age=60')
+  return c.json(
+    shippingDate({
+      ...toOptions(query),
+      cutoff: query.cutoff,
+      processingDays: query.processingDays,
+      deliveryDays: query.deliveryDays,
+    }),
+    200,
+  )
+})
+
+// AI 비서(Claude 등)용 MCP 서버. 자세한 내용은 src/mcp.ts
+app.on(['GET', 'POST', 'DELETE'], '/mcp', (c) => handleMcp(c.req.raw, VERSION))
+
 app.doc('/openapi.json', {
   openapi: '3.0.0',
   info: {
@@ -453,6 +681,9 @@ app.doc('/openapi.json', {
 })
 app.get('/docs', swaggerUI({ url: '/openapi.json' }))
 
+app.get('/en', (c) => c.html(enHtml()))
+app.get('/widget', (c) => c.html(widgetHtml()))
+
 app.get('/vacation', (c) => {
   const today = todayKst()
   const thisYear = Number(today.slice(0, 4))
@@ -462,7 +693,12 @@ app.get('/vacation', (c) => {
   const defaultYear = years.includes(preferred) ? preferred : (years[0] ?? SUPPORTED_YEARS.at(-1)!)
   c.header('Cache-Control', 'public, max-age=3600')
   return c.html(
-    vacationHtml({ years: years.length ? years : [defaultYear], defaultYear, provisional: [...PROVISIONAL_YEARS] }),
+    vacationHtml({
+      years: years.length ? years : [defaultYear],
+      defaultYear,
+      provisional: [...PROVISIONAL_YEARS],
+      kakaoKey: c.env?.KAKAO_JS_KEY,
+    }),
   )
 })
 
@@ -483,6 +719,12 @@ app.get('/', (c) => {
       '/long-weekends',
       '/vacation-tips',
       '/calendar.ics',
+      '/business-days/adjust',
+      '/business-days/nth',
+      '/business-days/month',
+      '/annual-leave',
+      '/shipping-date',
+      '/mcp',
     ],
   })
 })
@@ -493,7 +735,7 @@ app.onError((err, c) => {
   if (err instanceof OutOfRangeError) {
     return c.json({ error: { code: 'OUT_OF_RANGE', message: err.message } }, 400)
   }
-  if (err instanceof InvalidDateError) {
+  if (err instanceof InvalidDateError || err instanceof RangeError) {
     return c.json({ error: { code: 'INVALID_PARAMETER', message: err.message } }, 400)
   }
   console.error(err)

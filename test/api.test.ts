@@ -173,6 +173,51 @@ describe('GET /business-days/count', () => {
   })
 })
 
+describe('급여일·연차·출고일 API', () => {
+  it('/business-days/adjust', async () => {
+    const { status, body } = await get('/business-days/adjust?date=2026-10-25')
+    expect(status).toBe(200)
+    expect(body).toEqual({ date: '2026-10-25', rule: 'previous', result: '2026-10-23', weekday: '금', adjusted: true })
+    expect((await get('/business-days/adjust?date=2026-02-28&rule=modified-next')).body.result).toBe('2026-02-27')
+    expect((await get('/business-days/adjust?date=2026-02-28&rule=sideways')).status).toBe(400)
+  })
+
+  it('/business-days/nth', async () => {
+    expect((await get('/business-days/nth?year=2026&month=10&n=5')).body).toMatchObject({ result: '2026-10-08', weekday: '목' })
+    expect((await get('/business-days/nth?year=2026&month=12&n=-1')).body.result).toBe('2026-12-31')
+    const missing = await get('/business-days/nth?year=2026&month=10&n=25')
+    expect(missing.status).toBe(400)
+    expect(missing.body.error.message).toContain('25번째')
+    expect((await get('/business-days/nth?year=2026&month=10&n=0')).status).toBe(400)
+  })
+
+  it('/business-days/month', async () => {
+    const { body } = await get('/business-days/month?year=2026&month=10')
+    expect(body).toMatchObject({ count: 20, first: '2026-10-01', last: '2026-10-30' })
+    expect((await get('/business-days/month?year=2030&month=1')).body.error.code).toBe('OUT_OF_RANGE')
+  })
+
+  it('/annual-leave', async () => {
+    const { status, body } = await get('/annual-leave?hireDate=2024-03-02&date=2026-10-28')
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ yearsOfService: 2, current: { days: 15 }, next: { date: '2027-03-02', days: 16 } })
+    const early = await get('/annual-leave?hireDate=2026-10-28&date=2026-10-01')
+    expect(early.status).toBe(400)
+    expect(early.body.error.code).toBe('INVALID_PARAMETER')
+    expect((await get('/annual-leave')).status).toBe(400)
+  })
+
+  it('/shipping-date', async () => {
+    const { status, body, headers } = await get('/shipping-date?cutoff=15:30&deliveryDays=1')
+    expect(status).toBe(200)
+    expect(body.cutoff).toBe('15:30')
+    expect(body.shipDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(body.arrivalDate > body.shipDate).toBe(true)
+    expect(headers.get('Cache-Control')).toBe('public, max-age=60')
+    expect((await get('/shipping-date?cutoff=9:00')).status).toBe(400)
+  })
+})
+
 describe('문서와 기타', () => {
   it('OpenAPI 문서를 제공한다', async () => {
     const { status, body } = await get('/openapi.json')
@@ -220,6 +265,23 @@ describe('문서와 기타', () => {
     expect(html).toContain('<link rel="canonical" href="https://korea-holidays-api.greenteapie2023.workers.dev/">')
     expect(html).toContain('application/ld+json')
     expect(html).toContain('href="/vacation"')
+  })
+
+  it('연차 개수 계산기: 브라우저는 페이지, API 호출은 JSON', async () => {
+    const page = await app.request('/annual-leave', { headers: { Accept: 'text/html' } })
+    expect(page.headers.get('Content-Type')).toContain('text/html')
+    expect(await page.text()).toContain('연차 계산기')
+    const api = await app.request('/annual-leave?hireDate=2024-03-02', { headers: { Accept: 'text/html' } })
+    expect(api.headers.get('Content-Type')).toContain('application/json')
+  })
+
+  it('/en, /widget 페이지와 카카오 공유는 키가 있을 때만', async () => {
+    expect(await (await app.request('/en')).text()).toContain('Korean Public Holidays API')
+    expect(await (await app.request('/widget')).text()).toContain('data-kr-shipping')
+    expect(await (await app.request('/vacation')).text()).not.toContain('kakao.min.js')
+    const withKey = await (await app.request('/vacation', {}, { KAKAO_JS_KEY: 'test-key' })).text()
+    expect(withKey).toContain('kakao.min.js')
+    expect(withKey).toContain('Kakao.init("test-key")')
   })
 
   it('rate limit 을 넘으면 429', async () => {

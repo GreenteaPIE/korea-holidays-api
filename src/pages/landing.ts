@@ -23,6 +23,8 @@ ${head({
     inLanguage: 'ko',
   },
 })}
+<link rel="alternate" hreflang="ko" href="${SITE_URL}/">
+<link rel="alternate" hreflang="en" href="${SITE_URL}/en">
 <style>
 ${BASE_CSS}
   .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 24px; }
@@ -68,6 +70,10 @@ ${BASE_CSS}
     <div><strong>🏖️ 연차 꿀조합 계산기</strong><span>연차 며칠로 최장 며칠 쉴 수 있을까? 대체공휴일까지 반영해 계산해 드려요</span></div>
     <span class="btn primary">계산하기</span>
   </a>
+  <a class="card cta" href="/annual-leave">
+    <div><strong>📅 연차 개수 계산기</strong><span>입사일만 넣으면 지금 내 연차가 몇 개인지, 언제 또 생기는지 알려드려요</span></div>
+    <span class="btn primary">계산하기</span>
+  </a>
 
   <h2>오늘</h2>
   <div class="today">
@@ -91,7 +97,10 @@ ${BASE_CSS}
   <footer class="links">
     <a href="${GITHUB_URL}">GitHub</a> ·
     <a href="${NPM_URL}">npm</a> ·
-    <a href="/vacation">연차 계산기</a> ·
+    <a href="/vacation">연차 꿀조합</a> ·
+    <a href="/annual-leave">연차 개수 계산기</a> ·
+    <a href="/widget">쇼핑몰 출고일 위젯</a> ·
+    <a href="/en">English</a> ·
     <a href="/openapi.json">OpenAPI</a>
     <p>관공서 공휴일 기준입니다. 민간 기업의 휴무 여부는 회사 규정에 따라 다를 수 있습니다.</p>
   </footer>

@@ -18,6 +18,8 @@
 | `KR_ISBUSINESSDAY(날짜, [휴무])` | `=KR_ISBUSINESSDAY(A2)` | 영업일이면 `TRUE` |
 | `KR_ADDBUSINESSDAYS(날짜, 일수, [휴무])` | `=KR_ADDBUSINESSDAYS("2026-09-23", 3)` | `2026-09-30` |
 | `KR_BUSINESSDAYS(시작, 끝, [휴무])` | `=KR_BUSINESSDAYS("2026-10-01", "2026-10-31")` | `20` |
+| `KR_ADJUSTBUSINESSDAY(날짜, [규칙], [휴무])` | `=KR_ADJUSTBUSINESSDAY("2026-10-25")` | `2026-10-23` (급여일이 일요일 → 금요일) |
+| `KR_NTHBUSINESSDAY(연, 월, N, [휴무])` | `=KR_NTHBUSINESSDAY(2026, 12, -1)` | `2026-12-31` (마지막 영업일) |
 | `KR_HOLIDAYS(연도)` | `=KR_HOLIDAYS(2026)` | 공휴일 표가 아래로 펼쳐짐 |
 
 - `[휴무]`: `"sat-sun"`(기본, 토·일 휴무), `"sun"`(토요일 근무), `"none"`(공휴일만 휴무)

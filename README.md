@@ -12,12 +12,17 @@
 
 **🔗 API 주소:** https://korea-holidays-api.greenteapie2023.workers.dev  
 **📖 문서(Swagger):** https://korea-holidays-api.greenteapie2023.workers.dev/docs  
-**🏖️ 연차 계산기:** https://korea-holidays-api.greenteapie2023.workers.dev/vacation  
+**🏖️ 연차 꿀조합:** https://korea-holidays-api.greenteapie2023.workers.dev/vacation · **📅 연차 개수 계산기:** https://korea-holidays-api.greenteapie2023.workers.dev/annual-leave  
+**🤖 MCP:** `https://korea-holidays-api.greenteapie2023.workers.dev/mcp` · **🌏 English:** https://korea-holidays-api.greenteapie2023.workers.dev/en  
 **📦 npm:** [`korea-holidays`](https://www.npmjs.com/package/korea-holidays) · **🐍 PyPI:** [`korea-holidays`](https://pypi.org/project/korea-holidays/)
 
 - **API 키 없음** · 회원가입 없이 바로 호출
 - **대체공휴일·임시공휴일·선거일 포함** · 2026년부터 공휴일이 된 노동절·제헌절 반영
 - **영업일 계산** · "영업일 기준 N일 뒤", "기간 내 영업일 수", 토요일 영업·회사 휴일 옵션
+- **급여일·정산일** · "급여일이 휴일이면 전 영업일", "매달 5번째 영업일", "마지막 영업일"
+- **연차 개수** · 입사일 기준 근로기준법 계산 (1년 미만 월차 포함)
+- **쇼핑몰 출고일 위젯** · 코드 두 줄로 "지금 주문하면 10/30(금) 출고"
+- **AI 비서 연결 (MCP)** · Claude 등이 한국 공휴일을 추측하지 않고 정확히 계산
 - **연휴·연차 추천** · "연차 2일로 최장 9일 휴가"
 - **캘린더 구독** · 구글·애플 캘린더에 URL 하나로 추가
 - **npm·PyPI 패키지** · 서버 없이 코드에서 바로 계산 (의존성 0개)
@@ -28,7 +33,7 @@
 
 | 연도 | 상태 |
 |---|---|
-| 2024 ~ 2026 | 확정 |
+| 2015 ~ 2026 | 확정 (공공데이터포털 특일정보와 대조 완료) |
 | 2027 | 잠정 (임시공휴일 등 공식 발표에 따라 바뀔 수 있음, 응답의 `provisional: true`) |
 
 ## 엔드포인트
@@ -43,6 +48,12 @@
 | GET | `/long-weekends?year=2026` | 3일 이상 연휴 목록 |
 | GET | `/vacation-tips?year=2027&leaveDays=2` | 연차로 만들 수 있는 최장 휴가 추천 |
 | GET | `/calendar.ics` | 캘린더 구독용 iCalendar |
+| GET | `/business-days/adjust?date=2026-10-25&rule=previous` | 휴일이면 앞/뒤 영업일로 (급여일·결제일) |
+| GET | `/business-days/nth?year=2026&month=10&n=5` | 그 달의 N번째 영업일 (`n=-1` 마지막) |
+| GET | `/business-days/month?year=2026&month=10` | 그 달의 영업일 목록 |
+| GET | `/annual-leave?hireDate=2024-03-02` | 입사일 기준 연차 개수 |
+| GET | `/shipping-date?cutoff=14:00&deliveryDays=1` | 지금 주문하면 언제 출고·도착? |
+| POST | `/mcp` | MCP 서버 (AI 비서용) |
 | GET | `/years` | 지원 연도 목록 |
 | GET | `/docs` · `/openapi.json` | Swagger UI · OpenAPI 3.0 스펙 |
 
@@ -92,7 +103,7 @@ curl "https://korea-holidays-api.greenteapie2023.workers.dev/vacation-tips?year=
 
 ### 영업일 옵션
 
-`/holidays/check`, `/business-days/*`, `/long-weekends`, `/vacation-tips` 에서 함께 쓸 수 있습니다.
+`/holidays/check`, `/business-days/*`, `/long-weekends`, `/vacation-tips`, `/shipping-date` 에서 함께 쓸 수 있습니다.
 
 | 파라미터 | 예시 | 설명 |
 |---|---|---|
@@ -114,6 +125,44 @@ curl "https://korea-holidays-api.greenteapie2023.workers.dev/business-days/add?d
 | `temporary` | 임시공휴일 |
 | `election` | 선거일 |
 | `observance` | 기념일 (어버이날·스승의 날 등, 쉬지 않음). `observances=true` 일 때만 포함 |
+
+### 급여일 규칙 (`rule`)
+
+| 값 | 의미 | 예: 2026-02-28(토) |
+|---|---|---|
+| `previous` (기본) | 앞 영업일 | 2/27(금) |
+| `next` | 뒤 영업일 | 3/3(화) (3/1 삼일절·3/2 대체공휴일 건너뜀) |
+| `modified-next` | 뒤로 가다 달이 바뀌면 앞으로 (금융권 관행) | 2/27(금) |
+| `modified-previous` | 앞으로 가다 달이 바뀌면 뒤로 | - |
+
+## 🤖 AI 비서 연결 (MCP)
+
+Claude 같은 AI 비서는 한국 대체공휴일을 자주 틀립니다. MCP 로 연결하면 이 API 로 정확히 계산합니다.
+
+```
+https://korea-holidays-api.greenteapie2023.workers.dev/mcp
+```
+
+- **Claude (claude.ai / 데스크톱 앱)**: 설정 → 커넥터 → 커스텀 커넥터 추가 → 위 URL
+- **Claude Code**:
+  ```bash
+  claude mcp add --transport http korea-holidays https://korea-holidays-api.greenteapie2023.workers.dev/mcp
+  ```
+
+도구: `get_holidays`, `check_date`, `next_holidays`, `add_business_days`, `count_business_days`, `adjust_to_business_day`, `nth_business_day`, `long_weekends`, `vacation_tips`, `annual_leave`, `shipping_date`
+
+> "2027년에 연차 3일로 제일 길게 쉬려면?", "다음 달 마지막 영업일 언제야?", "2024년 3월 입사면 지금 연차 몇 개?" 같은 질문에 도구를 써서 답합니다.
+
+## 🚚 쇼핑몰 출고일 위젯
+
+상품 페이지에 붙여넣으면 "🚚 지금 주문하면 **오늘 10/28(수)** 출고 · 10/29(목) 도착 예정 (마감까지 1시간 39분)" 이 뜹니다.
+
+```html
+<div data-kr-shipping data-cutoff="14:00" data-delivery-days="1"></div>
+<script src="https://korea-holidays-api.greenteapie2023.workers.dev/widget.js" async></script>
+```
+
+코드 생성기와 미리보기: https://korea-holidays-api.greenteapie2023.workers.dev/widget
 
 ## 📅 캘린더 구독
 
@@ -139,13 +188,16 @@ npm install korea-holidays
 ```
 
 ```ts
-import { addBusinessDays, isHoliday, nextHolidays, vacationTips } from 'korea-holidays'
+import { addBusinessDays, adjustToBusinessDay, annualLeave, isHoliday, nextHolidays, nthBusinessDay, vacationTips } from 'korea-holidays'
 
 isHoliday('2026-07-17') // true (제헌절)
 addBusinessDays('2026-09-23', 3) // '2026-09-30'
 addBusinessDays('2026-09-23', 3, { weekend: 'sun' }) // 토요일 영업
 nextHolidays(new Date(), 3) // 오늘부터 다가오는 공휴일 3개 (daysUntil 포함)
 vacationTips(2027, 2)[0] // { start: '2027-09-11', end: '2027-09-19', days: 9, ... }
+adjustToBusinessDay('2026-10-25') // '2026-10-23' (급여일이 일요일 → 금요일)
+nthBusinessDay(2026, 12, -1) // '2026-12-31' (마지막 영업일)
+annualLeave('2024-03-02').current // { days: 15, kind: 'annual', expires: ... }
 ```
 
 날짜는 `'YYYY-MM-DD'` 문자열 또는 `Date` 를 받으며, `Date` 는 **한국 시간 기준 날짜**로 해석합니다. 지원 연도 밖이면 `OutOfRangeError`, 형식이 틀리면 `InvalidDateError` 를 던집니다.
@@ -174,6 +226,8 @@ kh.vacation_tips(2027, leave_days=2)[0] # 2027-09-11 ~ 09-19, 9일
 =KR_ISHOLIDAY(A2)                         → TRUE / FALSE
 =KR_ADDBUSINESSDAYS("2026-09-23", 3)      → 2026-09-30
 =KR_BUSINESSDAYS("2026-10-01", "2026-10-31") → 20
+=KR_ADJUSTBUSINESSDAY("2026-10-25")       → 2026-10-23 (급여일 조정)
+=KR_NTHBUSINESSDAY(2026, 12, -1)          → 2026-12-31 (마지막 영업일)
 =KR_HOLIDAYS(2026)                        → 공휴일 표
 ```
 
@@ -211,6 +265,11 @@ jobs:
 | `NOT_FOUND` | 404 | 없는 경로 |
 | `RATE_LIMITED` | 429 | IP 당 분당 120회 초과 |
 
+## 🙋 데이터 오류 제보
+
+빠졌거나 잘못된 공휴일, 새 임시공휴일은 [📅 공휴일 데이터 오류 제보](https://github.com/GreenteaPIE/korea-holidays-api/issues/new?template=holiday-data.yml) 양식으로 알려주세요.
+매주 공공데이터포털 특일정보와 자동으로 대조하며, 다르면 이슈가 자동으로 생기고 해결되면 자동으로 닫힙니다.
+
 ## 개발
 
 ```bash
@@ -243,6 +302,7 @@ node scripts/og/generate.cjs  # 공유 미리보기 이미지(public/og*.png) �
 - **요청 제한**: IP 당 분당 120회 ([`wrangler.toml`](wrangler.toml) 의 `[[ratelimits]]`)
 - **로그·사용량**: Cloudflare 대시보드 → Workers & Pages → `korea-holidays-api` → Observability / Metrics
 - **커스텀 도메인**: Cloudflare 에 도메인을 등록한 뒤 `wrangler.toml` 의 `routes` 주석을 풀고 도메인을 넣으면 됩니다.
+- **카카오톡 공유**: [카카오 개발자 콘솔](https://developers.kakao.com)에서 앱을 만들고 Web 플랫폼에 사이트 도메인을 등록한 뒤, JavaScript 키를 `wrangler.toml` 의 `[vars] KAKAO_JS_KEY` 에 넣으면 계산기 페이지에 공유 버튼이 나타납니다.
 
 ## 데이터 기준
 

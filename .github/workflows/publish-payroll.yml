@@ -21,7 +21,17 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
-      # prepublishOnly 가 타입 검사·테스트·빌드를 한다
-      - run: npm publish --access public
+      # prepublishOnly 가 타입 검사·테스트·빌드를 한다. 실패하면 npm 의 오류 문장을 주석(annotation)으로 남긴다
+      - name: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::이 저장소에 NPM_TOKEN 시크릿이 없습니다"
+            exit 1
+          fi
+          set -o pipefail
+          if ! npm publish --access public 2>&1 | tee publish.log; then
+            grep -E "npm (error|ERR!)" publish.log | head -8 | while read -r line; do echo "::error::$line"; done
+            exit 1
+          fi

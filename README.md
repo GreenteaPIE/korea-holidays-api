@@ -2,6 +2,9 @@
 
 대한민국 공휴일·영업일 Open API — 대체공휴일·임시공휴일 지원, API 키 없이 JSON으로 바로 사용
 
+**🔗 API 주소:** https://korea-holidays-api.greenteapie2023.workers.dev  
+**📖 문서(Swagger):** https://korea-holidays-api.greenteapie2023.workers.dev/docs
+
 - **API 키 없음** · 회원가입 없이 바로 호출
 - **대체공휴일·임시공휴일·선거일 포함** · 2026년부터 공휴일이 된 노동절·제헌절 반영
 - **영업일 계산** · "영업일 기준 N일 뒤", "기간 내 영업일 수"
@@ -30,7 +33,7 @@
 ### 예시
 
 ```bash
-curl "https://<배포-주소>/holidays/check?date=2026-07-17"
+curl "https://korea-holidays-api.greenteapie2023.workers.dev/holidays/check?date=2026-07-17"
 ```
 
 ```json
@@ -47,7 +50,7 @@ curl "https://<배포-주소>/holidays/check?date=2026-07-17"
 ```
 
 ```bash
-curl "https://<배포-주소>/business-days/add?date=2026-09-23&days=3"
+curl "https://korea-holidays-api.greenteapie2023.workers.dev/business-days/add?date=2026-09-23&days=3"
 ```
 
 ```json

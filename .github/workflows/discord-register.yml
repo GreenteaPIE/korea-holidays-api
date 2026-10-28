@@ -1,0 +1,19 @@
+name: Register Discord Commands
+
+# 디스코드 슬래시 명령어를 등록한다. 명령어 정의(src/discord.ts)를 바꿨을 때 Actions 탭에서 직접 실행한다.
+# 저장소 Secrets 에 DISCORD_APP_ID, DISCORD_BOT_TOKEN 이 필요하다.
+on:
+  workflow_dispatch:
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: node scripts/discord-register.ts
+        env:
+          DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}

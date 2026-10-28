@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="today" id="today">불러오는 중…</div>
+    <div class="next" id="next"></div>
+  </header>
+  <section>
+    <div class="month-head">
+      <button type="button" id="prev" aria-label="이전 달">‹</button>
+      <strong id="month-title"></strong>
+      <button type="button" id="next-month" aria-label="다음 달">›</button>
+    </div>
+    <div class="grid" id="grid"></div>
+    <ul class="list" id="month-list"></ul>
+  </section>
+  <section>
+    <h2>다가오는 공휴일</h2>
+    <ul class="list" id="upcoming"></ul>
+  </section>
+  <footer>
+    <a href="https://korea-holidays-api.greenteapie2023.workers.dev/vacation" target="_blank">🏖️ 연차 꿀조합</a>
+    <a href="https://korea-holidays-api.greenteapie2023.workers.dev/annual-leave" target="_blank">📅 내 연차 개수</a>
+  </footer>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -23,6 +23,7 @@ import {
   vacationTips,
   type CalendarOptions,
 } from './lib/index.ts'
+import { handleDiscord } from './discord.ts'
 import { handleMcp } from './mcp.ts'
 import { LANDING_HTML } from './pages/landing.ts'
 import { vacationHtml } from './pages/vacation.ts'
@@ -35,6 +36,8 @@ type Bindings = {
   RATE_LIMITER?: RateLimit
   /** 카카오톡 공유용 JavaScript 키 (wrangler.toml [vars]). 없으면 공유 버튼을 숨긴다. */
   KAKAO_JS_KEY?: string
+  /** 디스코드 봇 Public Key. 없으면 /discord/interactions 는 503 */
+  DISCORD_PUBLIC_KEY?: string
 }
 
 const VERSION = '0.3.0'
@@ -521,7 +524,8 @@ app.use('*', cors())
 
 app.use('*', async (c, next) => {
   const limiter = c.env?.RATE_LIMITER
-  if (limiter) {
+  // 디스코드 요청은 모두 디스코드 서버 IP 에서 오므로 IP 제한에서 뺀다 (서명으로 검증한다)
+  if (limiter && !c.req.path.startsWith('/discord/')) {
     const key = c.req.header('cf-connecting-ip') ?? 'unknown'
     const { success } = await limiter.limit({ key })
     if (!success) {
@@ -670,6 +674,9 @@ app.openapi(shippingRoute, (c) => {
 
 // AI 비서(Claude 등)용 MCP 서버. 자세한 내용은 src/mcp.ts
 app.on(['GET', 'POST', 'DELETE'], '/mcp', (c) => handleMcp(c.req.raw, VERSION))
+
+// 디스코드 봇 슬래시 명령어. 자세한 내용은 src/discord.ts
+app.on(['GET', 'POST'], '/discord/interactions', (c) => handleDiscord(c.req.raw, c.env?.DISCORD_PUBLIC_KEY))
 
 app.doc('/openapi.json', {
   openapi: '3.0.0',

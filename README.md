@@ -233,6 +233,49 @@ kh.vacation_tips(2027, leave_days=2)[0] # 2027-09-11 ~ 09-19, 9일
 
 자세한 설치 방법은 [`integrations/google-sheets/README.md`](integrations/google-sheets/README.md) 에 있습니다.
 
+## 🤖 디스코드 봇
+
+서버에 추가하면 슬래시 명령어로 공휴일을 물어볼 수 있습니다. 봇 서버 없이 이 Worker 가 바로 답합니다.
+
+| 명령어 | 예시 |
+|---|---|
+| `/공휴일 [연도] [월]` | `/공휴일 2027 9` → 2027년 9월 공휴일 |
+| `/다음공휴일 [개수]` | 다가오는 공휴일과 D-day |
+| `/연차추천 [연차일수] [연도]` | `/연차추천 2` → 🥇 9/11 ~ 9/19 · 9일 |
+| `/영업일 일수 [날짜]` | `/영업일 3` → 영업일 기준 3일 뒤 |
+| `/날짜확인 [날짜]` | 공휴일·영업일인지 |
+
+직접 운영하려면:
+
+1. [Discord Developer Portal](https://discord.com/developers/applications) → **New Application**
+2. **General Information** 의 **Public Key** 를 `wrangler.toml` 의 `[vars] DISCORD_PUBLIC_KEY` 에 넣고 배포
+3. 같은 화면의 **Interactions Endpoint URL** 에 `https://korea-holidays-api.greenteapie2023.workers.dev/discord/interactions` 입력 → Save
+4. **Bot** 탭에서 토큰을 발급해 저장소 Secrets 에 `DISCORD_APP_ID`, `DISCORD_BOT_TOKEN` 등록 → Actions 의 **Register Discord Commands** 실행
+5. **Installation** 탭의 설치 링크로 서버에 추가 (`applications.commands` 권한)
+
+### 매일 "내일은 공휴일" 알림 (디스코드 웹훅)
+
+채널 설정 → 연동 → 웹후크로 만든 주소를 `DISCORD_WEBHOOK_URL` 시크릿에 넣고 GitHub Actions 스케줄로 보냅니다.
+
+```yaml
+on:
+  schedule:
+    - cron: '0 9 * * *' # 매일 18:00 KST
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          tomorrow=$(TZ=Asia/Seoul date -d tomorrow +%F)
+          name=$(curl -s "https://korea-holidays-api.greenteapie2023.workers.dev/holidays/check?date=$tomorrow" | jq -r '.holidays[0].name // empty')
+          [ -n "$name" ] && curl -s -H 'Content-Type: application/json' \
+            -d "{\"content\":\"📅 내일($tomorrow)은 $name 입니다\"}" "${{ secrets.DISCORD_WEBHOOK_URL }}" || true
+```
+
+## 🧩 크롬 확장 프로그램
+
+툴바에 다음 공휴일 D-day 를 띄우고, 이번 달 달력과 다가오는 공휴일을 보여줍니다. 설치 방법은 [`integrations/chrome-extension`](integrations/chrome-extension/README.md) 을 참고하세요.
+
 ## 💬 슬랙 알림 예시
 
 GitHub Actions 스케줄로 "내일은 공휴일" 알림을 보낼 수 있습니다 (`SLACK_WEBHOOK_URL` 시크릿 필요).

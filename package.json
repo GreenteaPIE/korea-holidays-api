@@ -50,7 +50,9 @@
     "verify-data": "node scripts/verify-holidays.ts",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
-    "export:python": "node scripts/export-python-data.ts"
+    "export:python": "node scripts/export-python-data.ts",
+    "pack:extension": "mkdir -p dist && cd integrations/chrome-extension && zip -r -q ../../dist/korea-holidays-extension.zip . -x README.md",
+    "discord:register": "node scripts/discord-register.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261027.1",
